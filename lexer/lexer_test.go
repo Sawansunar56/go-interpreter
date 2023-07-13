@@ -2,7 +2,6 @@ package lexer
 
 import (
 	"example/sawan/goInterpreter/token"
-	"fmt"
 	"testing"
 )
 
@@ -65,7 +64,6 @@ func TestNextToken(t *testing.T) {
 	for i, tt := range tests {
 		tok := l.NextToken()
 
-		fmt.Printf("%d, expectedType=%q, got=%q\n", i, tt.expectedType, tok.Type)
 		if tok.Type != tt.expectedType {
 			t.Fatalf("tests[%d] - tokenType wrong, expected=%q, got=%q",
 				i, tt.expectedType, tok.Type)
