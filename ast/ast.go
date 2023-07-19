@@ -1,12 +1,14 @@
 package ast
 
 import (
+	"bytes"
 	"example/sawan/goInterpreter/token"
 )
 
 // Every interface must implement this node so that they implement the token literal and have a string
 type Node interface {
 	TokenLiteral() string
+	String() string
 }
 
 // Statements produce no value while Expressions produce value
@@ -41,6 +43,17 @@ func (p *Program) TokenLiteral() string {
 	}
 }
 
+// Loops through the created buffer and stores the statements and returns said buffer
+func (p *Program) String() string {
+  var out bytes.Buffer
+
+  for _, s := range p.Statements {
+    out.WriteString(s.String())
+  }
+
+  return out.String()
+}
+
 type LetStatement struct {
 	Token token.Token
 	Name  *Identifier
@@ -55,7 +68,9 @@ type Identifier struct {
 	Value string
 }
 
+// Currently does nothing specific.
 func (i *Identifier) expressionNode()      {}
+// Currently does nothing specific. Returns the literal value inside the token
 func (i *Identifier) TokenLiteral() string { return i.Token.Literal }
 
 type ReturnStatement struct {
@@ -63,5 +78,55 @@ type ReturnStatement struct {
 	ReturnValue Expression
 }
 
+// Currently does nothing specific.
 func (rs *ReturnStatement) statementNode()       {}
+// Currently does nothing specific. Returns the literal value inside the token
 func (rs *ReturnStatement) TokenLiteral() string { return rs.Token.Literal }
+
+type ExpressionStatement struct {
+	Token      token.Token
+	Expression Expression
+}
+
+// Currently does nothing specific.
+func (es *ExpressionStatement) statementNode()       {}
+// Currently does nothing specific. Returns the literal value inside the token
+func (es *ExpressionStatement) TokenLiteral() string { return es.Token.Literal }
+
+
+func (ls *LetStatement) String() string {
+  var out bytes.Buffer
+
+  out.WriteString(ls.TokenLiteral() + " ")
+  out.WriteString(ls.Name.String())
+  out.WriteString(" = ")
+
+  if ls.Value != nil {
+    out.WriteString(ls.Value.String())
+  }
+
+  return out.String()
+}
+
+func (rs *ReturnStatement) String() string {
+  var out bytes.Buffer
+
+  out.WriteString(rs.TokenLiteral() + " ")
+
+  if rs.ReturnValue != nil {  
+    out.WriteString(rs.ReturnValue.String())
+  }
+
+  out.WriteString(";")
+  return out.String()
+}
+
+func (es *ExpressionStatement) String() string {
+  if es.Expression != nil {
+    return es.Expression.String()
+  }
+  return ""
+}
+
+// just returns the value of the identifier
+func (i *Identifier) String() string { return i.Value }
