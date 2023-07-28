@@ -1,11 +1,12 @@
 package parser
 
 import (
+	"fmt"
+	"strconv"
+
 	"example/sawan/goInterpreter/ast"
 	"example/sawan/goInterpreter/lexer"
 	"example/sawan/goInterpreter/token"
-	"fmt"
-	"strconv"
 )
 
 /*
@@ -16,6 +17,7 @@ peekToken - holds the positon of the next token
 type Parser struct {
 	l *lexer.Lexer
 
+	// contains a list of errors
 	errors []string
 
 	curToken  token.Token
@@ -32,9 +34,11 @@ func New(l *lexer.Lexer) *Parser {
 	p.nextToken()
 	p.nextToken()
 
-  p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
-  p.registerPrefix(token.IDENT, p.parseIdentifier)
-  p.registerPrefix(token.IDENT, p.parseIdentifier)
+	p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
+	p.registerPrefix(token.IDENT, p.parseIdentifier)
+	p.registerPrefix(token.INT, p.parseIntegerLiteral)
+	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
+	p.registerPrefix(token.BANG, p.parsePrefixExpression)
 
 	return p
 }
@@ -142,12 +146,10 @@ type (
 
 func (p *Parser) registerPrefix(tokenType token.TokenType, fn prefixParseFn) {
 	p.prefixParseFns[tokenType] = fn
-
 }
 
 func (p *Parser) registerInfix(tokenType token.TokenType, fn infixParseFn) {
 	p.infixParseFns[tokenType] = fn
-
 }
 
 func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
@@ -175,29 +177,48 @@ const (
 )
 
 func (p *Parser) parseExpression(precedence int) ast.Expression {
-  prefix := p.prefixParseFns[p.curToken.Type]
-  if prefix == nil {
-    return nil
-  }
-  leftExp := prefix()
-  return leftExp
+	prefix := p.prefixParseFns[p.curToken.Type]
+	if prefix == nil {
+    p.noPrefixParseFnError(p.curToken.Type)
+		return nil
+	}
+	leftExp := prefix()
+	return leftExp
 }
 
 func (p *Parser) parseIdentifier() ast.Expression {
-  return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 }
 
-// Converts the ast expression to an integer literal and token literal value 
+// Converts the ast expression to an integer literal and token literal value
 // from the token to a real int64
 func (p *Parser) parseIntegerLiteral() ast.Expression {
-  lit := &ast.IntegerLiteral{Token: p.curToken}
+	lit := &ast.IntegerLiteral{Token: p.curToken}
 
-  value, err := strconv.ParseInt(p.curToken.Literal, 0, 64)
-  if err != nil {
-    msg := fmt.Sprintf("could not parse %q as integer", p.curToken.Literal)
-    p.errors = append(p.errors, msg)
-    return nil
+	value, err := strconv.ParseInt(p.curToken.Literal, 0, 64)
+	if err != nil {
+		msg := fmt.Sprintf("could not parse %q as integer", p.curToken.Literal)
+		p.errors = append(p.errors, msg)
+		return nil
+	}
+	lit.Value = value
+	return lit
+}
+
+func (p *Parser) noPrefixParseFnError(t token.TokenType) {
+	msg := fmt.Sprintf("no prefix parse function for %s found", t)
+	p.errors = append(p.errors, msg)
+}
+
+func (p *Parser) parsePrefixExpression() ast.Expression {
+  expression := &ast.PrefixExpression{
+    Token: p.curToken,
+    Operator: p.curToken.Literal,
   }
-  lit.Value = value
-  return lit
+
+  p.nextToken()
+
+  expression.Right = p.parseExpression(PREFIX)
+
+  return expression
 }
