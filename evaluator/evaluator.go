@@ -13,11 +13,11 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 	switch node := node.(type) {
 
 	case *ast.Program:
-		return evalProgram(node.Statements, env)
+		return evalProgram(node, env)
 
 	case *ast.ExpressionStatement:
 		return Eval(node.Expression, env)
-    
+
 	case *ast.IntegerLiteral:
 		return &object.Integer{Value: node.Value}
 
@@ -54,7 +54,7 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 			return val
 		}
 		return &object.ReturnValue{Value: val}
-    
+
 	case *ast.LetStatement:
 		val := Eval(node.Value, env)
 		if isError(val) {
@@ -81,7 +81,10 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		if len(args) == 1 && isError(args[0]) {
 			return args[0]
 		}
-    return applyFunction(function, args)
+		return applyFunction(function, args)
+
+	case *ast.StringLiteral:
+		return &object.String{Value: node.Value}
 	}
 
 	return nil
@@ -93,10 +96,10 @@ var (
 	FALSE = &object.Boolean{Value: false}
 )
 
-func evalProgram(stmts []ast.Statement, env *object.Environment) object.Object {
+func evalProgram(program *ast.Program, env *object.Environment) object.Object {
 	var result object.Object
 
-	for _, statement := range stmts {
+	for _, statement := range program.Statements {
 		result = Eval(statement, env)
 
 		switch result := result.(type) {
@@ -157,6 +160,8 @@ func evalInfixExpression(operator string, left, right object.Object) object.Obje
 	switch {
 	case left.Type() == object.INTEGER_OBJ && right.Type() == object.INTEGER_OBJ:
 		return evalIntegerInfixExpression(operator, left, right)
+	case left.Type() == object.STRING_OBJ && right.Type() == object.STRING_OBJ:
+		return evalStringInfixExpression(operator, left, right)
 
 	case operator == "==":
 		return nativeBoolToBooleanObject(left == right)
@@ -265,48 +270,58 @@ func evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object
 }
 
 func evalExpressions(exps []ast.Expression, env *object.Environment) []object.Object {
-  var result []object.Object
+	var result []object.Object
 
-  for _, e := range exps {
-    evaluated := Eval(e, env)
-    if isError(evaluated) {
-      return []object.Object{evaluated}
-    }
-    result = append(result, evaluated)
-  }
+	for _, e := range exps {
+		evaluated := Eval(e, env)
+		if isError(evaluated) {
+			return []object.Object{evaluated}
+		}
+		result = append(result, evaluated)
+	}
 
-  return result
+	return result
 }
 
 func applyFunction(fn object.Object, args []object.Object) object.Object {
-  function, ok := fn.(*object.Function)
-  if !ok {
-    return newError("not a function: %s", fn.Type())
-  }
+	function, ok := fn.(*object.Function)
+	if !ok {
+		return newError("not a function: %s", fn.Type())
+	}
 
-  extendedEnv := extendFunctionEnv(function, args)
-  evaluated := Eval(function.Body, extendedEnv)
-  return unwrapReturnValue(evaluated)
+	extendedEnv := extendFunctionEnv(function, args)
+	evaluated := Eval(function.Body, extendedEnv)
+	return unwrapReturnValue(evaluated)
 }
 
 // creates a new environment inside the function that binds the arguments of the function
 // call to the function parameter names.
 func extendFunctionEnv(fn *object.Function, args []object.Object) *object.Environment {
-  env := object.NewEnclosedEnvironment(fn.Env)
+	env := object.NewEnclosedEnvironment(fn.Env)
 
-  for paramIdx, param := range fn.Parameters {
-    env.Set(param.Value, args[paramIdx])
-  }
+	for paramIdx, param := range fn.Parameters {
+		env.Set(param.Value, args[paramIdx])
+	}
 
-  return env
+	return env
 }
 
 // Used to stop returns from bubbling up into multiple function calls.
 // This function allows return to only go up one scope / environment
 func unwrapReturnValue(obj object.Object) object.Object {
-  if returnValue, ok := obj.(*object.ReturnValue); ok {
-    return returnValue.Value
-  }
+	if returnValue, ok := obj.(*object.ReturnValue); ok {
+		return returnValue.Value
+	}
 
-  return obj
+	return obj
+}
+
+func evalStringInfixExpression(operator string, left, right object.Object) object.Object {
+	if operator != "+" {
+		return newError("unknown operator: %s %s %s", left.Type(), operator, right.Type())
+	}
+
+	leftVal := left.(*object.String).Value
+	rightVal := right.(*object.String).Value
+	return &object.String{Value: leftVal + rightVal}
 }

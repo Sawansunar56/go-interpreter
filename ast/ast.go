@@ -65,6 +65,21 @@ type LetStatement struct {
 
 func (ls *LetStatement) statementNode()       {}
 func (ls *LetStatement) TokenLiteral() string { return ls.Token.Literal }
+func (ls *LetStatement) String() string {
+	var out bytes.Buffer
+
+	out.WriteString(ls.TokenLiteral() + " ")
+	out.WriteString(ls.Name.String())
+	out.WriteString(" = ")
+
+	if ls.Value != nil {
+		out.WriteString(ls.Value.String())
+	}
+
+	out.WriteString(";")
+
+	return out.String()
+}
 
 type Identifier struct {
 	Token token.Token
@@ -101,19 +116,6 @@ func (es *ExpressionStatement) statementNode() {}
 // Currently does nothing specific. Returns the literal value inside the token
 func (es *ExpressionStatement) TokenLiteral() string { return es.Token.Literal }
 
-func (ls *LetStatement) String() string {
-	var out bytes.Buffer
-
-	out.WriteString(ls.TokenLiteral() + " ")
-	out.WriteString(ls.Name.String())
-	out.WriteString(" = ")
-
-	if ls.Value != nil {
-		out.WriteString(ls.Value.String())
-	}
-
-	return out.String()
-}
 
 func (rs *ReturnStatement) String() string {
 	var out bytes.Buffer
@@ -275,19 +277,28 @@ type CallExpression struct {
 	Arguments []Expression
 }
 
-func (ce *CallExpression) expressionNode() {}
+func (ce *CallExpression) expressionNode()      {}
 func (ce *CallExpression) TokenLiteral() string { return ce.Token.Literal }
 func (ce *CallExpression) String() string {
-  var out bytes.Buffer
-  args := []string{}
+	var out bytes.Buffer
+	args := []string{}
 
-  for _, a := range ce.Arguments {
-    args = append(args, a.String())
-  }
-  out.WriteString(ce.Function.String())
-  out.WriteString("(")
-  out.WriteString(strings.Join(args, ", "))
-  out.WriteString(")")
+	for _, a := range ce.Arguments {
+		args = append(args, a.String())
+	}
+	out.WriteString(ce.Function.String())
+	out.WriteString("(")
+	out.WriteString(strings.Join(args, ", "))
+	out.WriteString(")")
 
-  return out.String()
+	return out.String()
 }
+
+type StringLiteral struct {
+	Token token.Token
+	Value string
+}
+
+func (sl *StringLiteral) expressionNode()      {}
+func (sl *StringLiteral) TokenLiteral() string { return sl.Token.Literal }
+func (sl *StringLiteral) String() string       { return sl.Token.Literal }
