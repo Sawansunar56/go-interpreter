@@ -1,6 +1,10 @@
 package evaluator
 
-import "example/sawan/goInterpreter/object"
+import (
+	"fmt"
+
+	"example/sawan/goInterpreter/object"
+)
 
 var builtins = map[string]*object.Builtin{
 	"len": {
@@ -89,6 +93,15 @@ var builtins = map[string]*object.Builtin{
 			copy(newElements, arr.Elements)
 			newElements[length] = args[1]
 			return &object.Array{Elements: newElements}
+		},
+	},
+	"puts": {
+		Fn: func(args ...object.Object) object.Object {
+			for _, args := range args {
+				fmt.Println(args.Inspect())
+			}
+
+			return NULL
 		},
 	},
 }
